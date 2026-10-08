@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML/HTML Tag Validator using Pushdown Automata (PDA)</title>
+    <meta name="description" content="An educational Pushdown Automata (PDA) simulator for XML and HTML tag validation, built for Theory of Computation.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Header -->
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 6h16M4 12h16M4 18h10" />
+                        <circle cx="18" cy="18" r="3" fill="#6366f1" stroke="none" />
+                    </svg>
+                </div>
+                <div>
+                    <h1>PDA Tag Validator</h1>
+                    <p class="subtitle">Theory of Computation • Pushdown Automata Stack Simulator</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="btn-theory-toggle" class="btn btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    Formal Definition (7-Tuple)
+                </button>
+            </div>
+        </header>
+
+        <!-- Preset Examples Bar -->
+        <section class="preset-section card">
+            <span class="preset-label">Preset Test Cases:</span>
+            <div class="preset-buttons">
+                <button class="btn-preset valid" data-test="<a><b><c></c></b></a>">
+                    <span class="badge valid">Valid</span> <a><b><c></c></b></a>
+                </button>
+                <button class="btn-preset invalid" data-test="<a><b></a></b>">
+                    <span class="badge invalid">Invalid</span> <a><b></a></b> (Mismatch)
+                </button>
+                <button class="btn-preset invalid" data-test="<a><b></b>">
+                    <span class="badge invalid">Invalid</span> <a><b></b> (Unclosed)
+                </button>
+                <button class="btn-preset valid" data-test="<html><body><p>Hello</p></body></html>">
+                    <span class="badge valid">Valid</span> HTML Document
+                </button>
+                <button class="btn-preset invalid" data-test="<div></span>">
+                    <span class="badge invalid">Invalid</span> <div></span> (Unmatched)
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Workspace Grid -->
+        <main class="main-grid">
+            <!-- Left Panel: Input, Rules Panel & PDA State Machine -->
+            <div class="left-panel">
+                <!-- Input Editor Card -->
+                <div class="card editor-card">
+                    <div class="card-header">
+                        <h2>Input XML / HTML</h2>
+                        <span class="token-count-badge" id="token-count">0 Tokens</span>
+                    </div>
+                    <div class="editor-wrapper">
+                        <textarea id="xml-input" placeholder="Type or paste XML/HTML tags here..." spellcheck="false"><a><b><c></c></b></a></textarea>
+                    </div>
+
+                    <!-- Token Stream Tracker -->
+                    <div class="token-stream-wrapper">
+                        <div class="stream-label">Parsed Token Stream:</div>
+                        <div id="token-stream" class="token-stream">
+                            <!-- Dynamically generated token pills -->
+                        </div>
+                    </div>
+
+                    <!-- Controls Bar -->
+                    <div class="controls-bar">
+                        <div class="btn-group">
+                            <button id="btn-step" class="btn btn-primary btn-step-highlight">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                Step (Process 1 Tag)
+                            </button>
+                            <button id="btn-validate" class="btn btn-secondary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                                Auto Validate
+                            </button>
+                            <button id="btn-reset" class="btn btn-outline">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                Reset Simulation
+                            </button>
+                        </div>
+                        <div class="speed-control">
+                            <label for="speed-slider">Speed:</label>
+                            <input type="range" id="speed-slider" min="100" max="1500" value="600" step="100">
+                            <span id="speed-label">600ms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result Status Banner -->
+                <div id="result-banner" class="result-banner idle">
+                    <div class="result-header">
+                        <div class="result-icon" id="result-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        </div>
+                        <div>
+                            <h3 id="result-title">Ready for STEP Validation</h3>
+                            <p id="result-summary">Click <strong>Step (Process 1 Tag)</strong> to evaluate tags step by step, or <strong>Auto Validate</strong> to execute automatically.</p>
+                        </div>
+                    </div>
+                    <div id="result-details" class="result-details hidden"></div>
+                </div>
+
+                <!-- PDA TRANSITION RULES Panel -->
+                <div class="card pda-rules-card">
+                    <div class="card-header">
+                        <h2>PDA TRANSITION RULES</h2>
+                        <span class="rules-subtitle">Theory Quick Reference</span>
+                    </div>
+                    <div class="rules-grid">
+                        <!-- Left Column: Transition Rules -->
+                        <div class="rules-column">
+                            <span class="rules-column-title">Transition Rules</span>
+                            <ul class="rules-list">
+                                <li>
+                                    <span class="rule-icon push">↓</span>
+                                    <span>Opening tag &rarr; <strong class="text-push">PUSH(tag)</strong></span>
+                                </li>
+                                <li>
+                                    <span class="rule-icon pop">↑</span>
+                                    <span>Matching closing tag &rarr; Compare with TOP &rarr; <strong class="text-pop">POP(tag)</strong></span>
+                                </li>
+                                <li>
+                                    <span class="rule-icon reject">&times;</span>
+                                    <span>Mismatching closing tag &rarr; <strong class="text-reject">REJECT</strong></span>
+                                </li>
+                                <li>
+                                    <span class="rule-icon accept">&check;</span>
+                                    <span>End of input + only Z₀ &rarr; <strong class="text-accept">ACCEPT</strong></span>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Right Column: State Definitions -->
+                        <div class="rules-column">
+                            <span class="rules-column-title">State Legend</span>
+                            <ul class="legend-list">
+                                <li><code class="state-tag q0">q₀</code> = Initial State</li>
+                                <li><code class="state-tag q1">q₁</code> = Opening Tag</li>
+                                <li><code class="state-tag q2">q₂</code> = Closing Tag</li>
+                                <li><code class="state-tag q_accept">q_accept</code> = Accepted</li>
+                                <li><code class="state-tag q_reject">q_reject</code> = Rejected</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- State Transition Diagram Card -->
+                <div class="card pda-states-card">
+                    <div class="card-header">
+                        <h2>PDA State Machine</h2>
+                        <span class="state-subtitle">Current: <strong id="current-state-badge" class="state-tag q0">q₀ (Initial)</strong></span>
+                    </div>
+                    <div class="state-nodes-grid">
+                        <div class="state-node active" id="node-q0" data-state="q0">
+                            <div class="node-circle">q₀</div>
+                            <div class="node-label">Initial</div>
+                            <div class="node-desc">Stack = [Z₀]</div>
+                        </div>
+                        <div class="state-node" id="node-q1" data-state="q1">
+                            <div class="node-circle">q₁</div>
+                            <div class="node-label">Opening Tag</div>
+                            <div class="node-desc">PUSH(tag)</div>
+                        </div>
+                        <div class="state-node" id="node-q2" data-state="q2">
+                            <div class="node-circle">q₂</div>
+                            <div class="node-label">Closing Tag</div>
+                            <div class="node-desc">POP(tag)</div>
+                        </div>
+                        <div class="state-node" id="node-q_accept" data-state="q_accept">
+                            <div class="node-circle accept">q<sub>acc</sub></div>
+                            <div class="node-label">Accepted</div>
+                            <div class="node-desc">Stack = [Z₀] at EOF</div>
+                        </div>
+                        <div class="state-node" id="node-q_reject" data-state="q_reject">
+                            <div class="node-circle reject">q<sub>rej</sub></div>
+                            <div class="node-label">Rejected</div>
+                            <div class="node-desc">Mismatch / Syntax Error</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trace Log Card -->
+                <div class="card log-card">
+                    <div class="card-header">
+                        <h2>Step Execution Log</h2>
+                        <button id="btn-clear-log" class="btn-text">Clear Log</button>
+                    </div>
+                    <div class="log-table-container">
+                        <table class="log-table">
+                            <thead>
+                                <tr>
+                                    <th>Step</th>
+                                    <th>State</th>
+                                    <th>Processed Symbol</th>
+                                    <th>Stack Action</th>
+                                    <th>Stack Top</th>
+                                </tr>
+                            </thead>
+                            <tbody id="log-body">
+                                <tr class="log-empty">
+                                    <td colspan="5">No execution steps yet. Click Step or Auto Validate.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Stack Visualization Centerpiece & Live Status -->
+            <div class="right-panel centerpiece-panel">
+                <!-- Visual Memory Stack (Γ) Centerpiece Card -->
+                <div class="card stack-centerpiece-card">
+                    <div class="card-header stack-centerpiece-header">
+                        <div>
+                            <h2>PDA Memory Stack (Γ)</h2>
+                            <span class="stack-centerpiece-subtitle">Pushdown Automaton Memory Tower</span>
+                        </div>
+                        <span class="stack-count-badge" id="stack-count">1 Block</span>
+                    </div>
+
+                    <!-- Physical Stack Chamber View -->
+                    <div class="stack-chamber-container">
+                        <!-- TOP Pointer Badge -->
+                        <div class="top-pointer-badge" id="top-pointer">
+                            <span class="top-label">TOP</span>
+                            <span class="top-arrow">↓</span>
+                        </div>
+
+                        <!-- Stack Outer Tower Frame -->
+                        <div class="stack-tower-frame">
+                            <div class="tower-opening-cap">STACK OPENING</div>
+                            <!-- Dynamic Blocks Container -->
+                            <div id="stack-display" class="stack-blocks-column">
+                                <div class="stack-block bottom-marker top-block">
+                                    <span class="top-indicator-tag">TOP</span>
+                                    <span class="block-symbol">Z₀</span>
+                                    <span class="block-subtext">Bottom-of-stack marker</span>
+                                </div>
+                            </div>
+                            <!-- Heavy Solid Stack Base Stand -->
+                            <div class="stack-base-stand">
+                                <span class="base-stand-label">BOTTOM (Z₀ Base)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Indicators (Current Tag & Current Action) -->
+                <div class="status-grid">
+                    <div class="card status-card">
+                        <span class="status-title">Current Active Tag</span>
+                        <div class="status-value" id="current-tag-val">—</div>
+                    </div>
+                    <div class="card status-card">
+                        <span class="status-title">Current Action</span>
+                        <div class="status-value action-val" id="current-action-val">INITIALIZED</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Formal Definition Modal -->
+        <div id="theory-modal" class="modal hidden">
+            <div class="modal-content card">
+                <div class="modal-header">
+                    <h2>Formal PDA Definition (7-Tuple)</h2>
+                    <button id="btn-close-modal" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="tuple-formula">
+                        M = (Q, &Sigma;, &Gamma;, &delta;, q₀, Z₀, F)
+                    </div>
+                    <ul class="tuple-list">
+                        <li><strong>Q (States):</strong> { q₀, q₁, q₂, q<sub>accept</sub>, q<sub>reject</sub> }</li>
+                        <li><strong>&Sigma; (Input Alphabet):</strong> Opening tags <code>&lt;tag&gt;</code>, closing tags <code>&lt;/tag&gt;</code></li>
+                        <li><strong>&Gamma; (Stack Alphabet):</strong> { Z₀, tag_name₁, tag_name₂, ... }</li>
+                        <li><strong>q₀ (Start State):</strong> q₀</li>
+                        <li><strong>Z₀ (Initial Stack Symbol):</strong> Z₀ (Bottom-of-stack marker)</li>
+                        <li><strong>F (Accept States):</strong> { q<sub>accept</sub> }</li>
+                        <li><strong>&delta; (Transition Function Rules):</strong>
+                            <div class="transition-table-wrapper">
+                                <table class="transition-table">
+                                    <thead>
+                                        <tr>
+                                            <th>State (q)</th>
+                                            <th>Input (&Sigma;)</th>
+                                            <th>Stack Top (&Gamma;)</th>
+                                            <th>Next State (q')</th>
+                                            <th>Stack Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>q₀</td>
+                                            <td>&epsilon;</td>
+                                            <td>Z₀</td>
+                                            <td>q₁</td>
+                                            <td>Init Stack with Z₀</td>
+                                        </tr>
+                                        <tr>
+                                            <td>q₁</td>
+                                            <td>Opening Tag <code>&lt;X&gt;</code></td>
+                                            <td>Y</td>
+                                            <td>q₁</td>
+                                            <td><strong>PUSH(X)</strong> &rarr; Top becomes X</td>
+                                        </tr>
+                                        <tr>
+                                            <td>q₁ / q₂</td>
+                                            <td>Closing Tag <code>&lt;/X&gt;</code></td>
+                                            <td>X (Matches!)</td>
+                                            <td>q₂</td>
+                                            <td><strong>POP(X)</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td>q₁ / q₂</td>
+                                            <td>Closing Tag <code>&lt;/X&gt;</code></td>
+                                            <td>Y &ne; X (Mismatch)</td>
+                                            <td>q<sub>reject</sub></td>
+                                            <td>REJECT (Halt)</td>
+                                        </tr>
+                                        <tr>
+                                            <td>q₁ / q₂</td>
+                                            <td>EOF (End of Tokens)</td>
+                                            <td>Z₀</td>
+                                            <td>q<sub>accept</sub></td>
+                                            <td>ACCEPT</td>
+                                        </tr>
+                                        <tr>
+                                            <td>q₁ / q₂</td>
+                                            <td>EOF (End of Tokens)</td>
+                                            <td>X &ne; Z₀</td>
+                                            <td>q<sub>reject</sub></td>
+                                            <td>REJECT (Unclosed tags)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Theory of Computation Project • XML/HTML Tag Validation via Pushdown Automata</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
